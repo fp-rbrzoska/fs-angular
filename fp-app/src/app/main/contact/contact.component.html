@@ -1,0 +1,9 @@
+<div class="card mt-5 p-5">
+  <div class="row">
+    <app-contact-form class="col-md-6"
+                      [showErrorMessage]="showErrorMesssage"
+                      [messageSent]="isMessageSent"
+                      (sendMessage)="send($event)"></app-contact-form>
+    <app-contact-map class="col-md-6"></app-contact-map>
+  </div>
+</div>
