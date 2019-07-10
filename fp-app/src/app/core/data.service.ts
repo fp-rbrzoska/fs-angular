@@ -4,19 +4,25 @@ import { HttpClient, HttpResponse } from '@angular/common/http';
 import { map, tap } from 'rxjs/operators';
 import { Product } from '../models/product';
 import { ContactMessage } from '../models/contact-message';
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 const apiUrl = environment.apiUrl;
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable()
 export class DataService {
 
-  private totalProducts = 0;
+  private totalProductsSubject = new BehaviorSubject(0);
+  private productsSubject = new BehaviorSubject<Product[]>([]);
+
+  get products$() {
+    return this.productsSubject.asObservable();
+  }
+  get totalPages$() {
+    return this.totalProductsSubject.asObservable().pipe(map(products => Math.ceil(products / 10)));
+  }
   constructor(private http: HttpClient) { }
 
   getRandomProducts(itemsNumber = 3) {
-    const pages = Math.ceil(this.totalProducts / itemsNumber);
+    const pages = Math.ceil(this.totalProductsSubject.getValue() / itemsNumber);
     const randomPage = Math.floor(Math.random() * (pages  + 1)) || 1;
 
     return this.http.get(apiUrl + '/products', {
@@ -27,10 +33,21 @@ export class DataService {
       }
     }).pipe(
       tap((res: HttpResponse<Product[]>) => {
-        this.totalProducts = parseInt(res.headers.get('x-total-count'), 0);
+        this.totalProductsSubject.next(parseInt(res.headers.get('x-total-count'), 0));
       }),
       map( (res: HttpResponse<Product[]>) => res.body)
     );
+  }
+
+  refreshProducts(pageNumber = 1, filter = { text: '', category: ''}) {
+    this.http.get<Product[]>(apiUrl + '/products', {
+      params: {
+        _page: pageNumber.toString(),
+        _limit: '10',
+        ...filter.text && {q: filter.text },
+        ...filter.category && {category: filter.category}
+      }
+    }).subscribe(prods => this.productsSubject.next(prods));
   }
 
   sendContactMessage(msg: ContactMessage) {
